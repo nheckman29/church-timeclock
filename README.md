@@ -60,7 +60,9 @@ Override the port with `PORT=9000 ./.venv/bin/python run.py`.
 decides based on their last punch, which removes the most common source of bad data. The
 screen confirms in a green box ("Jane Smith clocked in at 8:34AM") or a red one ("Jane
 Smith clocked out at 12:32PM"), then returns to the keypad after 10 seconds or when they
-tap **Return**.
+tap **Return**. The **Time Card Access** button opens a PIN-protected view of that
+employee's hours for the current Sunday–Saturday week, including daily totals and elapsed
+time for an active shift. The previous and next arrows let employees review other weeks.
 
 The same screen works from a personal phone or laptop on the church network: open
 `http://<machine-ip>:8080/`. Laptops can type the PIN on the keyboard and press Enter.
