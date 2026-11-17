@@ -11,12 +11,14 @@ import ExportCheck from './pages/ExportCheck.jsx'
 import Kiosk from './pages/Kiosk.jsx'
 import Login from './pages/Login.jsx'
 import Settings from './pages/Settings.jsx'
+import TimeCard from './pages/TimeCard.jsx'
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Kiosk />} />
+        <Route path="/time-card" element={<TimeCard />} />
         <Route path="/admin/login" element={<Login />} />
         <Route path="/admin" element={<AdminLayout />}>
           <Route index element={<Dashboard />} />

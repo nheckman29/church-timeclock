@@ -152,6 +152,12 @@ def period_json(start, end):
     }
 
 
+def week_bounds(day):
+    """The Sunday–Saturday week containing `day`."""
+    start = day - timedelta(days=(day.weekday() + 1) % 7)
+    return start, start + timedelta(days=6)
+
+
 def shift_json(shift):
     return {
         "in_id": shift["in_id"],
@@ -223,6 +229,71 @@ def punch():
         direction=direction,
         time=now.strftime("%I:%M%p").lstrip("0"),
         warning=warning,
+    )
+
+
+@app.post("/api/time-card")
+def time_card():
+    conn = get_conn()
+    key = f"time-card:{request.remote_addr or 'unknown'}"
+    if locked_out(key):
+        return fail("Too many wrong PINs. Wait a moment.", 429)
+
+    employee = db.employee_by_pin(conn, str(body().get("pin", "")))
+    if employee is None:
+        record_failure(key)
+        return fail("PIN not recognized.")
+    clear_failures(key)
+
+    now = datetime.now().replace(microsecond=0)
+    try:
+        week_day = timecalc.parse_date(request.args["start"])
+    except (KeyError, ValueError):
+        week_day = now.date()
+    start, end = week_bounds(week_day)
+    punches = db.punches_between(conn, employee["id"], start, end)
+    shifts = [
+        shift
+        for shift in timecalc.pair_punches(punches)
+        if timecalc.in_period(shift, start, end)
+    ]
+    active_shift = (
+        shifts[-1]
+        if shifts
+        and not shifts[-1]["complete"]
+        and shifts[-1]["in_at"] is not None
+        and shifts[-1]["in_at"] <= now
+        and not timecalc.is_stale(shifts[-1], db.max_shift_hours(conn), now)
+        else None
+    )
+    daily_minutes = {start + timedelta(days=offset): 0 for offset in range(7)}
+
+    for shift in shifts:
+        minutes = shift["minutes"] or 0
+        if shift is active_shift:
+            minutes = max(0, int((now - shift["in_at"]).total_seconds() // 60))
+        daily_minutes[shift["date"]] += minutes
+
+    days = [
+        {
+            "date": day.isoformat(),
+            "day": day.strftime("%A"),
+            "hours": timecalc.hours_text(minutes),
+            "in_progress": bool(active_shift and active_shift["date"] == day),
+        }
+        for day, minutes in daily_minutes.items()
+    ]
+    return jsonify(
+        employee={"name": employee["name"]},
+        week={
+            "start": start.isoformat(),
+            "end": end.isoformat(),
+            "label": f"{timecalc.day_label(start)} – {timecalc.day_label(end)}",
+            "prev_start": (start - timedelta(days=7)).isoformat(),
+            "next_start": (start + timedelta(days=7)).isoformat(),
+        },
+        hours=timecalc.hours_text(sum(daily_minutes.values())),
+        days=days,
     )
 
 

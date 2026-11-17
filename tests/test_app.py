@@ -114,6 +114,89 @@ def test_inactive_employee_cannot_clock_in(client, conn):
     assert punch(client).status_code == 400
 
 
+def test_time_card_reports_only_current_week_hours_for_pin_owner(client, conn, monkeypatch):
+    class FixedDateTime(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return cls(2026, 1, 7, 12, 45)
+
+    monkeypatch.setattr(app_module, "datetime", FixedDateTime)
+    employee_id = add_employee(conn, name="Jane Smith", pin="1111")
+    other_id = add_employee(conn, name="Bob Ray", pin="2222")
+
+    db.add_punch(conn, employee_id, "2026-01-03 08:00:00", "in")
+    db.add_punch(conn, employee_id, "2026-01-03 10:00:00", "out")
+    db.add_punch(conn, employee_id, "2026-01-04 08:00:00", "in")
+    db.add_punch(conn, employee_id, "2026-01-04 12:15:00", "out")
+    db.add_punch(conn, employee_id, "2026-01-07 10:00:00", "in")
+    db.add_punch(conn, other_id, "2026-01-06 08:00:00", "in")
+    db.add_punch(conn, other_id, "2026-01-06 16:00:00", "out")
+    db.add_punch(conn, employee_id, "2026-01-11 08:00:00", "in")
+    db.add_punch(conn, employee_id, "2026-01-11 10:00:00", "out")
+
+    response = client.post("/api/time-card", json={"pin": "1111"})
+
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data["employee"] == {"name": "Jane Smith"}
+    assert data["week"]["start"] == "2026-01-04"
+    assert data["week"]["end"] == "2026-01-10"
+    assert data["week"]["prev_start"] == "2025-12-28"
+    assert data["week"]["next_start"] == "2026-01-11"
+    assert data["hours"] == "7.00"
+    assert len(data["days"]) == 7
+    assert data["days"][0] == {
+        "date": "2026-01-04",
+        "day": "Sunday",
+        "hours": "4.25",
+        "in_progress": False,
+    }
+    assert data["days"][3] == {
+        "date": "2026-01-07",
+        "day": "Wednesday",
+        "hours": "2.75",
+        "in_progress": True,
+    }
+    assert client.get("/api/session").get_json() == {"admin": False}
+
+    next_week = client.post("/api/time-card?start=2026-01-11", json={"pin": "1111"}).get_json()
+    assert next_week["week"]["start"] == "2026-01-11"
+    assert next_week["week"]["end"] == "2026-01-17"
+    assert next_week["hours"] == "2.00"
+
+
+def test_time_card_rejects_unknown_pin(client):
+    response = client.post("/api/time-card", json={"pin": "9999"})
+    assert response.status_code == 400
+    assert response.get_json()["error"] == "PIN not recognized."
+    assert client.get("/api/session").get_json() == {"admin": False}
+
+
+def test_time_card_includes_completed_punches_added_by_admin(client, conn, monkeypatch):
+    class FixedDateTime(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return cls(2026, 1, 7, 10, 42)
+
+    employee_id = add_employee(conn)
+    log_in(client)
+    monkeypatch.setattr(app_module, "datetime", FixedDateTime)
+
+    for direction, punch_at in (("in", "2026-01-07T10:32"), ("out", "2026-01-07T12:33")):
+        response = client.post(
+            f"/api/employees/{employee_id}/punches",
+            json={"direction": direction, "punch_at": punch_at},
+        )
+        assert response.status_code == 200
+
+    report = client.post("/api/time-card", json={"pin": "1111"}).get_json()
+    admin_report = client.get(f"/api/employees/{employee_id}/shifts?start=2026-01-07").get_json()
+    assert report["hours"] == "2.02"
+    assert report["hours"] == admin_report["hours"]
+    assert report["days"][3]["hours"] == "2.02"
+    assert report["days"][3]["in_progress"] is False
+
+
 # --- admin -------------------------------------------------------------------
 
 

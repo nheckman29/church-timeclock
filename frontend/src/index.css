@@ -44,7 +44,8 @@
   .key {
     @apply flex h-20 cursor-pointer items-center justify-center rounded-2xl border
            border-slate-200 bg-white text-3xl font-medium text-slate-800 shadow-sm transition
-           select-none hover:bg-slate-50 active:scale-95 active:bg-slate-100;
+           select-none hover:bg-slate-50 active:scale-95 active:bg-slate-100
+           disabled:cursor-not-allowed disabled:opacity-60;
   }
 
   .badge-open {
