@@ -21,7 +21,6 @@ from flask import (
     Flask,
     Response,
     abort,
-    after_this_request,
     g,
     jsonify,
     request,
@@ -529,18 +528,21 @@ def export_timesheet():
 @require_admin
 def backup():
     handle = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
+    path = handle.name
     handle.close()
-    destination = sqlite3.connect(handle.name)
-    get_conn().backup(destination)
-    destination.close()
 
-    @after_this_request
-    def cleanup(response):
-        os.unlink(handle.name)
-        return response
+    try:
+        destination = sqlite3.connect(path)
+        try:
+            get_conn().backup(destination)
+        finally:
+            destination.close()
+        backup_file = io.BytesIO(Path(path).read_bytes())
+    finally:
+        os.unlink(path)
 
     return send_file(
-        handle.name,
+        backup_file,
         as_attachment=True,
         download_name=f"timeclock-backup-{date.today()}.db",
     )
