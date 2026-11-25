@@ -74,8 +74,8 @@ selected pay period, with arrows to move between periods.
 
 1. Open the office area and select the pay period.
 2. Clear any missed punches flagged in the red banner.
-3. Click **Download Hours Summary**. One line per employee with total hours: the file you
-   key into payroll.
+3. Click **Download Hours Summary**. One line per employee with total hours in H:MM and
+   decimal formats: the file you key into payroll.
 4. Click **Download Timesheet Report** and **Download Backup**, then save both somewhere
    other than this machine.
 
