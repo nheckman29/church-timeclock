@@ -11,9 +11,26 @@ import timecalc
 
 def summary_rows(people, start, end):
     """One line per employee with total hours. The file you key into payroll."""
-    rows = [["Employee", "Period Start", "Period End", "Total Hours"]]
+    rows = [
+        [
+            "Employee",
+            "Period Start",
+            "Period End",
+            "Total Hours (H:MM)",
+            "Total Hours (Decimal)",
+        ]
+    ]
     for name, shifts in people:
-        rows.append([name, start, end, timecalc.hours_text(timecalc.total_minutes(shifts))])
+        total = timecalc.total_minutes(shifts)
+        rows.append(
+            [
+                name,
+                start,
+                end,
+                timecalc.hours_minutes(total),
+                timecalc.hours_text(total),
+            ]
+        )
     return rows
 
 

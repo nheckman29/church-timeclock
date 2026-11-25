@@ -52,6 +52,12 @@ def test_summary_has_one_line_per_employee():
     jane = shifts(punch(1, "2026-01-05 08:00:00", "in"), punch(2, "2026-01-05 16:30:00", "out"))
     rows = reports.summary_rows([("Jane", jane)], START, END)
     assert rows == [
-        ["Employee", "Period Start", "Period End", "Total Hours"],
-        ["Jane", START, END, "8.50"],
+        [
+            "Employee",
+            "Period Start",
+            "Period End",
+            "Total Hours (H:MM)",
+            "Total Hours (Decimal)",
+        ],
+        ["Jane", START, END, "8:30", "8.50"],
     ]

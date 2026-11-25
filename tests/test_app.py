@@ -358,7 +358,7 @@ def test_export_can_be_forced_and_counts_open_shifts_as_zero(client, conn):
     log_in(client)
     response = client.get("/api/export/summary.csv?start=2026-01-05&force=1")
     assert "text/csv" in response.headers["Content-Type"]
-    assert "Jane Smith,2026-01-04,2026-01-17,0.00" in response.get_data(as_text=True)
+    assert "Jane Smith,2026-01-04,2026-01-17,0:00,0.00" in response.get_data(as_text=True)
 
 
 def test_summary_csv_reports_total_hours(client, conn):
@@ -370,8 +370,8 @@ def test_summary_csv_reports_total_hours(client, conn):
 
     log_in(client)
     body = client.get("/api/export/summary.csv?start=2026-01-05").get_data(as_text=True)
-    assert "Employee,Period Start,Period End,Total Hours" in body
-    assert "Jane Smith,2026-01-04,2026-01-17,12.50" in body
+    assert "Employee,Period Start,Period End,Total Hours (H:MM),Total Hours (Decimal)" in body
+    assert "Jane Smith,2026-01-04,2026-01-17,12:30,12.50" in body
 
 
 def test_timesheet_report_breaks_the_period_down_by_day(client, conn):
